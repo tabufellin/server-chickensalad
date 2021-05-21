@@ -155,7 +155,20 @@ void *client_manager(void *params)
 
           client_struct *client2 = userlist[payload.extra()];
           Payload *message = new Payload();
-          message->sender = client2.name;
+          message.sender = client2.name;
+          message.message = "*PRIVATE* from " + payload.sender() + ": " + payload.message() + "\n";
+          message.code = 200;
+          message.flag() = payload.flag();
+
+          string responseMessage;
+          broadcast->SerializeToString(&binary);
+          strcpy(buffer, binary.c_str());
+          flag = 0;
+          send(message->socket, buffer, responseMessage.size() + 1, flag);
+        }
+        else
+        {
+          sendError(socket, "Unable to send private message!")
         }
       }
 
@@ -165,6 +178,14 @@ void *client_manager(void *params)
       }
     }
   }
+}
+
+void sendResponse()
+{
+}
+
+void sendError()
+{
 }
 
 int main(int argc, char *argv[])
