@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <sys/call>
+#include <sys/syscall.h>
 #include <pthread.h>
 #include <condition_variable>
 #include <map>
