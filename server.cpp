@@ -42,9 +42,9 @@ void *client_manager(void *params)
   char buffer[BUFFER_SIZE];
   client_struct client;
   client_struct *newClient = (client_struct *)params;
-  int socket = newClient->socket_d
+  int socket = newClient->socket_d;
 
-                   Payload payload;
+  Payload payload;
 
   while (true)
   {
