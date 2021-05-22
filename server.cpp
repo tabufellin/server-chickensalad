@@ -36,7 +36,7 @@ typedef struct
   const char* name;
   int status;
 } client_struct;
-
+pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 //map<string, client_struct *> userList = {};
 // limit of users 200
 client_struct *userList[200];
@@ -54,6 +54,22 @@ string getTypeStatus (int status) {
     return "INACTIVE";
   }
 }
+void queue_add(client_struct *cl)
+{
+    pthread_mutex_lock(&clients_mutex);
+
+    for (int i = 0; i < 200; ++i)
+    {
+        if (!userList[i])
+        {
+            userList[i] = cl;
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&clients_mutex);
+}
+
 // 
 void sendResponse(int socket, string sender, string message, Payload_PayloadFlag flag, int code, char *buffer)
 {
@@ -301,41 +317,55 @@ void *client_manager(void *params)
 int main(int argc, char *argv[])
 {
   
-  int port = atoi(argv[1]);
+  if (argc != 2)
+    {
+        printf("Usage: %s <port>\n", argv[0]);
+        return EXIT_FAILURE;
+    }
 
-  char *ip = DEFAULT_IP;
-  struct sockaddr_in server_addr;
-  struct sockaddr_in client_addr;
-  socklen_t client_size;
-  int socket_fd = 0, conn_fd = 0;
+    char *ip = DEFAULT_IP;
+    int port = atoi(argv[1]);
+    int option = 1;
+    int listenfd = 0, connfd = 0;
+    struct sockaddr_in serv_addr;
+    struct sockaddr_in cli_addr;
+    pthread_t tid;
 
-  socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-  server_addr.sin_family = AF_INET;
-  server_addr.sin_addr.s_addr = inet_addr(ip);
-  server_addr.sin_port = htons(port);
+    /* Socket settings */
+    listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = inet_addr(ip);
+    serv_addr.sin_port = htons(port);
 
-  signal(SIGPIPE, SIG_IGN);
+    signal(SIGPIPE, SIG_IGN);
 
-  while (true)
-  {
-    //fprintf(stderr, "hola...\n");
-    client_size = sizeof(client_addr);
-    conn_fd = accept(socket_fd, (struct sockaddr *)&client_addr, &client_size);
+    setsockopt(listenfd, SOL_SOCKET, (SO_REUSEPORT | SO_REUSEADDR), (char *)&option, sizeof(option));
+    bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+    listen(listenfd, 10);
 
-    pthread_t thread_id;
-    pthread_attr_t thread_attr;
+    printf("Welcome to the server\n");
 
-    client_struct *client = (client_struct *)malloc(sizeof(client_struct));
-    client->address = client_addr;
-    client->socket_d = conn_fd;
-    client->uid = uid++;
-    client->status = ACTIVE;
+    while (1)
+    {
+        socklen_t clilen = sizeof(cli_addr);
+        connfd = accept(listenfd, (struct sockaddr *)&cli_addr, &clilen);
 
-    pthread_attr_init(&thread_attr);
-    pthread_create(&thread_id, &thread_attr, client_manager, (void *)client);
 
-    sleep(1);
-  }
-  close(socket_fd);
-  return EXIT_SUCCESS;
+
+        /* Client settings */
+        client_struct *cli = (client_struct *)malloc(sizeof(client_struct));
+        cli->address = cli_addr;
+        cli->socket_d = connfd;
+        cli->uid = uid++;
+        cli->status = ACTIVE;
+
+        /* Add client to the queue and fork thread */
+        queue_add(cli);
+        pthread_create(&tid, NULL, &client_manager, (void *)cli);
+
+        /* Reduce CPU usage */
+        sleep(1);
+    }
+
+    return EXIT_SUCCESS;
 }
