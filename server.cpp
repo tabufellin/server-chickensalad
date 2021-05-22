@@ -111,6 +111,7 @@ void *client_manager(void *params)
       if (payload.flag() == Payload_PayloadFlag_register_)
       {
         printf("Registration started!");
+        fprintf(stderr, "Registration started!\n");
 
         // maybe later we will use it 
         bool flagUserExist = false;
@@ -299,6 +300,7 @@ void *client_manager(void *params)
 
 int main(int argc, char *argv[])
 {
+  
   int port = atoi(argv[1]);
 
   char *ip = DEFAULT_IP;
@@ -316,6 +318,7 @@ int main(int argc, char *argv[])
 
   while (true)
   {
+    //fprintf(stderr, "hola...\n");
     client_size = sizeof(client_addr);
     conn_fd = accept(socket_fd, (struct sockaddr *)&client_addr, &client_size);
 
